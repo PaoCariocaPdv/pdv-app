@@ -126,17 +126,20 @@ class PDVApp(ctk.CTk):
         return PlaceholderPage(self.content_area, title=titles.get(page_id, page_id.capitalize()))
 
     def navigate(self, page_id: str):
-        """Navega para a página indicada."""
+        """Navega para a página indicada (sem recriar frames já visitados)."""
+        if self._current_page is self._pages.get(page_id):
+            return  # Já estamos nessa página, nada a fazer
+
         # Esconde página atual
         if self._current_page:
             self._current_page.grid_remove()
 
-        # Exibe a nova página
+        # Exibe (ou cria) a nova página
         page = self._get_page(page_id)
-        page.grid()
+        page.grid(row=0, column=0, sticky="nsew")
         self._current_page = page
 
-        # Atualiza o estado ativo na sidebar
+        # Atualiza estado ativo na sidebar
         self.sidebar.set_active(page_id)
 
     def _check_for_updates(self):

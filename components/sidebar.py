@@ -1,6 +1,7 @@
 """
 PDV - Ponto de Venda
 Componente: Barra lateral de navegação retrátil (Hover para expandir/recolher)
+Performance optimizada: animação suave por interpolação, sem binding recursivo.
 """
 
 import customtkinter as ctk
@@ -9,19 +10,22 @@ from fonts import get_font
 
 
 class Sidebar(ctk.CTkFrame):
-    """Barra lateral de navegação retrátil: exibe apenas ícones por padrão e expande ao passar o mouse."""
+    """Barra lateral de navegação retrátil com transição suave de largura."""
 
     COLLAPSED_WIDTH = 70
-    EXPANDED_WIDTH = 230
+    EXPANDED_WIDTH  = 230
+    # Parâmetros de animação
+    ANIM_STEP_MS   = 12    # intervalo entre cada frame (ms)
+    ANIM_STEPS     = 10    # número de passos da animação
 
     NAV_ITEMS = [
-        {"id": "home",     "icon": "🏠", "label": "Início"},
-        {"id": "caixa",    "icon": "🛒", "label": "Caixa"},
-        {"id": "produtos", "icon": "📦", "label": "Produtos"},
-        {"id": "vendas",   "icon": "📊", "label": "Vendas"},
-        {"id": "clientes", "icon": "👤", "label": "Clientes"},
-        {"id": "relatorio","icon": "📋", "label": "Relatórios"},
-        {"id": "config",   "icon": "⚙️", "label": "Configurações"},
+        {"id": "home",      "icon": "🏠", "label": "Início"},
+        {"id": "caixa",     "icon": "🛒", "label": "Caixa"},
+        {"id": "produtos",  "icon": "📦", "label": "Produtos"},
+        {"id": "vendas",    "icon": "📊", "label": "Vendas"},
+        {"id": "clientes",  "icon": "👤", "label": "Clientes"},
+        {"id": "relatorio", "icon": "📋", "label": "Relatórios"},
+        {"id": "config",    "icon": "⚙️",  "label": "Configurações"},
     ]
 
     def __init__(self, parent, navigate_callback, **kwargs):
@@ -30,16 +34,24 @@ class Sidebar(ctk.CTkFrame):
             width=self.COLLAPSED_WIDTH,
             fg_color=COLORS["sidebar_bg"],
             corner_radius=0,
-            **kwargs
+            **kwargs,
         )
         self.navigate_callback = navigate_callback
-        self.active_page = "home"
-        self.is_expanded = False
-        self._collapse_job = None
+        self.active_page       = "home"
+        self._is_expanded      = False
+        self._anim_job         = None   # ID do after() de animação corrente
+        self._collapse_job     = None   # ID do after() de debounce de collapse
+        self._current_width    = float(self.COLLAPSED_WIDTH)
+        self._target_width     = float(self.COLLAPSED_WIDTH)
         self._buttons: dict[str, ctk.CTkButton] = {}
 
         self._build()
-        self.collapse()  # Inicia recolhido por padrão
+        # Aplica estado recolhido SEM animação no arranque
+        self._apply_collapsed_look()
+
+    # ------------------------------------------------------------------ #
+    #  Construção do layout                                                #
+    # ------------------------------------------------------------------ #
 
     def _build(self):
         self.grid_propagate(False)
@@ -64,13 +76,13 @@ class Sidebar(ctk.CTkFrame):
             font=get_font("small"),
             text_color=COLORS["sidebar_text"],
         )
-        # Inicia sem o subtítulo visível
+        # Inicia oculto — mostrado somente quando expandido
 
-        # Separador elegante
+        # Separador
         self.sep = ctk.CTkFrame(self, height=1, fg_color="#1D2E47", corner_radius=0)
         self.sep.grid(row=1, column=0, sticky="ew", padx=12, pady=(6, 14))
 
-        # Itens de navegação
+        # Botões de navegação
         for i, item in enumerate(self.NAV_ITEMS):
             btn = self._make_nav_button(item)
             btn.grid(row=i + 2, column=0, sticky="ew", padx=10, pady=3)
@@ -90,8 +102,41 @@ class Sidebar(ctk.CTkFrame):
 
         self.set_active("home")
 
-        # Conecta eventos de mouse para expandir / recolher
-        self._bind_hover_recursive(self)
+        # Binding de hover apenas no frame raiz da sidebar.
+        # O Tkinter propaga <Enter>/<Leave> do filho para o pai automaticamente
+        # quando usamos bind_all — mas isso seria global. A melhor abordagem
+        # sem binding recursivo é checar a posição do ponteiro periodicamente
+        # ao entrar/sair, usando um único par de bindings no frame principal.
+        self.bind("<Enter>", self._on_enter, add="+")
+        self.bind("<Leave>", self._on_leave, add="+")
+
+        # Vincula também no canvas interno do CTkFrame (necessário no CTk)
+        if hasattr(self, "_canvas"):
+            self._canvas.bind("<Enter>", self._on_enter, add="+")
+            self._canvas.bind("<Leave>", self._on_leave, add="+")
+
+        # Vincula nos filhos diretos apenas (não recursivo)
+        self._bind_direct_children(self)
+
+    def _bind_direct_children(self, widget):
+        """Vincula <Enter>/<Leave> apenas nos filhos diretos — sem recursão profunda."""
+        for child in widget.winfo_children():
+            try:
+                child.bind("<Enter>", self._on_enter, add="+")
+                child.bind("<Leave>", self._on_leave, add="+")
+            except Exception:
+                pass
+            # Um nível abaixo para capturar o canvas interno dos CTkButton
+            for sub in child.winfo_children():
+                try:
+                    sub.bind("<Enter>", self._on_enter, add="+")
+                    sub.bind("<Leave>", self._on_leave, add="+")
+                except Exception:
+                    pass
+
+    # ------------------------------------------------------------------ #
+    #  Criação dos botões                                                  #
+    # ------------------------------------------------------------------ #
 
     def _make_nav_button(self, item):
         btn = ctk.CTkButton(
@@ -116,31 +161,59 @@ class Sidebar(ctk.CTkFrame):
         self.active_page = page_id
         for pid, btn in self._buttons.items():
             if pid == page_id:
-                btn.configure(
-                    fg_color=COLORS["primary"],
-                    text_color="#FFFFFF",
-                )
+                btn.configure(fg_color=COLORS["primary"], text_color="#FFFFFF")
             else:
-                btn.configure(
-                    fg_color="transparent",
-                    text_color=COLORS["sidebar_text"],
-                )
+                btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"])
 
-    def expand(self):
-        """Expande a barra lateral exibindo ícones e nomes."""
-        self.is_expanded = True
-        self.configure(width=self.EXPANDED_WIDTH)
+    # ------------------------------------------------------------------ #
+    #  Animação suave de largura                                           #
+    # ------------------------------------------------------------------ #
 
-        # Ajusta logo
+    def _animate_to(self, target: float):
+        """Inicia (ou redireciona) a animação de largura para 'target' px."""
+        # Cancela animação corrente se houver
+        if self._anim_job:
+            self.after_cancel(self._anim_job)
+            self._anim_job = None
+
+        self._target_width = target
+        self._step_animation()
+
+    def _step_animation(self):
+        """Executa um passo da animação de interpolação linear."""
+        diff = self._target_width - self._current_width
+        if abs(diff) < 1.0:
+            # Chegou ao destino
+            self._current_width = self._target_width
+            self.configure(width=int(self._current_width))
+            # Atualiza a aparência SOMENTE quando terminar de animar
+            if self._target_width == self.EXPANDED_WIDTH:
+                self._apply_expanded_look()
+            else:
+                self._apply_collapsed_look()
+            self._anim_job = None
+            return
+
+        # Move 1/ANIM_STEPS do caminho restante a cada frame (ease-out)
+        step = diff / self.ANIM_STEPS
+        self._current_width += step
+        self.configure(width=int(self._current_width))
+        self._anim_job = self.after(self.ANIM_STEP_MS, self._step_animation)
+
+    # ------------------------------------------------------------------ #
+    #  Aparência: expandido / recolhido                                   #
+    # ------------------------------------------------------------------ #
+
+    def _apply_expanded_look(self):
+        """Atualiza textos e alinhamentos para o estado expandido."""
+        self._is_expanded = True
+
         self.logo_frame.grid_configure(padx=18, pady=(20, 10))
         self.logo_title.pack_configure(anchor="w")
         self.logo_title.configure(text="🖥️  PDV Caixa", font=get_font("sidebar_title"))
         self.logo_subtitle.pack(anchor="w", pady=(2, 0))
-
-        # Ajusta separador
         self.sep.grid_configure(padx=16)
 
-        # Atualiza botões com ícone + nome alinhado à esquerda
         for item in self.NAV_ITEMS:
             btn = self._buttons[item["id"]]
             btn.grid_configure(padx=12)
@@ -150,24 +223,24 @@ class Sidebar(ctk.CTkFrame):
                 anchor="w",
             )
 
-        # Rodapé
         self.footer_label.configure(text=f"PDV v{APP_VERSION}")
 
-    def collapse(self):
-        """Recolhe a barra lateral exibindo apenas os ícones."""
-        self.is_expanded = False
-        self.configure(width=self.COLLAPSED_WIDTH)
+        # Vincula novos filhos que possam ter sido criados
+        self._bind_direct_children(self)
 
-        # Ajusta logo
+    def _apply_collapsed_look(self):
+        """Atualiza textos e alinhamentos para o estado recolhido."""
+        self._is_expanded = False
+
         self.logo_frame.grid_configure(padx=6, pady=(16, 10))
         self.logo_title.pack_configure(anchor="center")
         self.logo_title.configure(text="🖥️", font=get_font("sidebar_title"))
-        self.logo_subtitle.pack_forget()
-
-        # Ajusta separador
+        try:
+            self.logo_subtitle.pack_forget()
+        except Exception:
+            pass
         self.sep.grid_configure(padx=10)
 
-        # Atualiza botões com apenas ícone centralizado
         for item in self.NAV_ITEMS:
             btn = self._buttons[item["id"]]
             btn.grid_configure(padx=8)
@@ -177,52 +250,41 @@ class Sidebar(ctk.CTkFrame):
                 anchor="center",
             )
 
-        # Rodapé compacto
         self.footer_label.configure(text=f"v{APP_VERSION}")
 
+    # ------------------------------------------------------------------ #
+    #  Eventos de hover                                                    #
+    # ------------------------------------------------------------------ #
+
     def _on_enter(self, event=None):
-        """Disparado quando o mouse entra na sidebar ou em seus botões."""
+        """Mouse entrou na sidebar ou num filho."""
+        # Cancela qualquer collapse agendado
         if self._collapse_job:
             self.after_cancel(self._collapse_job)
             self._collapse_job = None
 
-        if not self.is_expanded:
-            self.expand()
+        if not self._is_expanded and self._target_width != self.EXPANDED_WIDTH:
+            self._animate_to(self.EXPANDED_WIDTH)
 
     def _on_leave(self, event=None):
-        """Disparado quando o mouse sai de algum widget da sidebar."""
+        """Mouse saiu de algum widget — aguarda um pouco antes de recolher."""
         if self._collapse_job:
             self.after_cancel(self._collapse_job)
-        self._collapse_job = self.after(120, self._check_and_collapse)
+        # Debounce de 80 ms para evitar flickering ao mover entre filhos
+        self._collapse_job = self.after(80, self._check_and_collapse)
 
     def _check_and_collapse(self):
-        """Verifica se o cursor do mouse realmente saiu da área da sidebar."""
+        """Verifica se o ponteiro realmente saiu da área da sidebar."""
         self._collapse_job = None
         try:
             x, y = self.winfo_pointerxy()
-            widget = self.winfo_containing(x, y)
-            if widget is None or not str(widget).startswith(str(self)):
-                self.collapse()
+            sx  = self.winfo_rootx()
+            sy  = self.winfo_rooty()
+            sw  = self.winfo_width()
+            sh  = self.winfo_height()
+            inside = sx <= x <= sx + sw and sy <= y <= sy + sh
         except Exception:
-            self.collapse()
+            inside = False
 
-    def _bind_hover_recursive(self, widget):
-        """Vincula eventos de hover recursivamente em todos os filhos."""
-        try:
-            widget.bind("<Enter>", self._on_enter, add="+")
-            widget.bind("<Leave>", self._on_leave, add="+")
-        except Exception:
-            pass
-
-        # Vincula também em canvases ou labels internos de widgets CTk
-        for attr in ("_canvas", "_label", "_image_label", "_text_label"):
-            sub = getattr(widget, attr, None)
-            if sub:
-                try:
-                    sub.bind("<Enter>", self._on_enter, add="+")
-                    sub.bind("<Leave>", self._on_leave, add="+")
-                except Exception:
-                    pass
-
-        for child in widget.winfo_children():
-            self._bind_hover_recursive(child)
+        if not inside and self._target_width != self.COLLAPSED_WIDTH:
+            self._animate_to(self.COLLAPSED_WIDTH)
