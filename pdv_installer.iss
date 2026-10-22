@@ -4,7 +4,7 @@
 ; ============================================================
 
 #define AppName    "PDV - Caixa"
-#define AppVersion "1.1.7"
+#define AppVersion "1.1.8"
 #define AppPublisher "PaoCariocaPdv"
 #define AppExeName "PDV.exe"
 #define AppURL "https://github.com/PaoCariocaPdv/pdv-app"
