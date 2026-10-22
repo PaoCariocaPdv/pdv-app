@@ -1,7 +1,8 @@
 """
 PDV - Ponto de Venda
 Componente: Barra lateral de navegação retrátil
-Animação suave da largura + troca de conteúdo apenas no final.
+Abordagem overlay (place): sidebar colapsada fixa + painel expandido por cima.
+Grid nunca muda → abertura instantânea sem recálculo de layout.
 """
 
 import customtkinter as ctk
@@ -10,12 +11,14 @@ from fonts import get_font
 
 
 class Sidebar(ctk.CTkFrame):
-    """Barra lateral retrátil com slide suave."""
+    """
+    Barra lateral com overlay:
+    - Frame base (70px) sempre no grid — nunca muda de tamanho.
+    - Painel expandido (230px) usa place() sobre a janela — abre/fecha instantâneo.
+    """
 
     COLLAPSED_WIDTH = 70
     EXPANDED_WIDTH  = 230
-    ANIM_STEP_MS    = 10   # ms por frame
-    ANIM_PX_STEP    = 16   # px por frame → ~10 frames → ~100ms total
 
     NAV_ITEMS = [
         {"id": "home",      "icon": "🏠", "label": "Início"},
@@ -28,6 +31,7 @@ class Sidebar(ctk.CTkFrame):
     ]
 
     def __init__(self, parent, navigate_callback, **kwargs):
+        # Frame base: sempre 70px, nunca muda
         super().__init__(
             parent,
             width=self.COLLAPSED_WIDTH,
@@ -35,57 +39,40 @@ class Sidebar(ctk.CTkFrame):
             corner_radius=0,
             **kwargs,
         )
+        self._parent           = parent
         self.navigate_callback = navigate_callback
-        self._is_expanded   = False
-        self._collapse_job  = None
-        self._anim_job      = None
-        self._current_width = float(self.COLLAPSED_WIDTH)
-        self._target_width  = float(self.COLLAPSED_WIDTH)
-        self.active_page    = "home"
+        self._is_expanded      = False
+        self._collapse_job     = None
+        self.active_page       = "home"
 
-        # Dois conjuntos de botões (sem scrambling)
-        self._btns_col: dict[str, ctk.CTkButton] = {}
-        self._btns_exp: dict[str, ctk.CTkButton] = {}
+        self._btns_col: dict[str, ctk.CTkButton] = {}  # botões do frame base
+        self._btns_exp: dict[str, ctk.CTkButton] = {}  # botões do overlay
 
         self.grid_propagate(False)
-        self._build()
-        self._show_collapsed_content()  # Inicia recolhido
+        self._build_base()
+        self._overlay = self._build_overlay()
 
     # ------------------------------------------------------------------ #
-    #  Construção                                                          #
+    #  Frame base (recolhido, 70px, sempre visível no grid)               #
     # ------------------------------------------------------------------ #
 
-    def _build(self):
+    def _build_base(self):
         self.grid_rowconfigure(len(self.NAV_ITEMS) + 2, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # Logo compacto
-        self.logo_col = ctk.CTkLabel(
+        # Logo
+        ctk.CTkLabel(
             self, text="🖥️",
             font=get_font("sidebar_title"),
             text_color="#FFFFFF",
-        )
-
-        # Logo expandido
-        self.logo_exp_frame = ctk.CTkFrame(self, fg_color="transparent")
-        ctk.CTkLabel(
-            self.logo_exp_frame,
-            text="🖥️  PDV Caixa",
-            font=get_font("sidebar_title"),
-            text_color="#FFFFFF",
-        ).pack(anchor="w")
-        ctk.CTkLabel(
-            self.logo_exp_frame,
-            text="Sistema de Ponto de Venda",
-            font=get_font("small"),
-            text_color=COLORS["sidebar_text"],
-        ).pack(anchor="w", pady=(2, 0))
+        ).grid(row=0, column=0, pady=(20, 10))
 
         # Separador
-        self.sep = ctk.CTkFrame(self, height=1, fg_color="#1D2E47", corner_radius=0)
-        self.sep.grid(row=1, column=0, sticky="ew", padx=12, pady=(6, 14))
+        ctk.CTkFrame(self, height=1, fg_color="#1D2E47", corner_radius=0).grid(
+            row=1, column=0, sticky="ew", padx=12, pady=(6, 14),
+        )
 
-        # Botões recolhidos (ícone centralizado)
+        # Botões (ícone centralizado)
         _icon_font = ctk.CTkFont(family="Segoe UI Emoji", size=18)
         for i, item in enumerate(self.NAV_ITEMS):
             btn = ctk.CTkButton(
@@ -100,10 +87,54 @@ class Sidebar(ctk.CTkFrame):
             btn.grid(row=i + 2, column=0, sticky="ew", padx=8, pady=3)
             self._btns_col[item["id"]] = btn
 
+        # Rodapé
+        ctk.CTkLabel(
+            self, text=f"v{APP_VERSION}",
+            font=get_font("small"), text_color="#627594",
+        ).grid(row=100, column=0, sticky="s", pady=16)
+
+        self._apply_active(self.active_page, self._btns_col)
+
+        # Hover no frame base
+        self._bind_hover_on(self)
+
+    # ------------------------------------------------------------------ #
+    #  Overlay expandido (230px, place() sobre o parent)                  #
+    # ------------------------------------------------------------------ #
+
+    def _build_overlay(self) -> ctk.CTkFrame:
+        """Cria o painel expandido mas não o exibe ainda."""
+        ov = ctk.CTkFrame(
+            self._parent,
+            width=self.EXPANDED_WIDTH,
+            fg_color=COLORS["sidebar_bg"],
+            corner_radius=0,
+        )
+        ov.grid_propagate(False)
+        ov.grid_rowconfigure(len(self.NAV_ITEMS) + 2, weight=1)
+        ov.grid_columnconfigure(0, weight=1)
+
+        # Logo expandido
+        logo_frame = ctk.CTkFrame(ov, fg_color="transparent")
+        logo_frame.grid(row=0, column=0, sticky="ew", padx=18, pady=(20, 10))
+        ctk.CTkLabel(
+            logo_frame, text="🖥️  PDV Caixa",
+            font=get_font("sidebar_title"), text_color="#FFFFFF",
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            logo_frame, text="Sistema de Ponto de Venda",
+            font=get_font("small"), text_color=COLORS["sidebar_text"],
+        ).pack(anchor="w", pady=(2, 0))
+
+        # Separador
+        ctk.CTkFrame(ov, height=1, fg_color="#1D2E47", corner_radius=0).grid(
+            row=1, column=0, sticky="ew", padx=16, pady=(6, 14),
+        )
+
         # Botões expandidos (ícone + nome)
         for i, item in enumerate(self.NAV_ITEMS):
             btn = ctk.CTkButton(
-                self, text=f"  {item['icon']}   {item['label']}",
+                ov, text=f"  {item['icon']}   {item['label']}",
                 font=get_font("sidebar_item"), anchor="w",
                 height=44, corner_radius=10,
                 fg_color="transparent",
@@ -114,94 +145,42 @@ class Sidebar(ctk.CTkFrame):
             btn.grid(row=i + 2, column=0, sticky="ew", padx=12, pady=3)
             self._btns_exp[item["id"]] = btn
 
-        # Rodapés
-        self.footer_col = ctk.CTkLabel(
-            self, text=f"v{APP_VERSION}",
+        # Rodapé
+        ctk.CTkLabel(
+            ov, text=f"PDV v{APP_VERSION}",
             font=get_font("small"), text_color="#627594",
-        )
-        self.footer_exp = ctk.CTkLabel(
-            self, text=f"PDV v{APP_VERSION}",
-            font=get_font("small"), text_color="#627594",
-        )
+        ).grid(row=100, column=0, sticky="s", pady=16)
 
-        self._apply_active_style(self.active_page)
-        self._bind_hover(self)
+        self._apply_active(self.active_page, self._btns_exp)
 
-    # ------------------------------------------------------------------ #
-    #  Conteúdo: troca apenas ícones ↔ ícones+nomes (sem animação)        #
-    # ------------------------------------------------------------------ #
+        # Hover no overlay
+        self._bind_hover_on(ov)
 
-    def _show_collapsed_content(self):
-        """Exibe ícones compactos — usado durante colapso e animação."""
-        try: self.logo_exp_frame.grid_remove()
-        except Exception: pass
-        self.logo_col.grid(row=0, column=0, pady=(20, 10))
-        self.sep.grid_configure(padx=12)
-
-        for item in self.NAV_ITEMS:
-            self._btns_exp[item["id"]].grid_remove()
-            self._btns_col[item["id"]].grid(
-                row=self.NAV_ITEMS.index(item) + 2,
-                column=0, sticky="ew", padx=8, pady=3,
-            )
-
-        try: self.footer_exp.grid_remove()
-        except Exception: pass
-        self.footer_col.grid(row=100, column=0, sticky="s", pady=16)
-
-    def _show_expanded_content(self):
-        """Exibe ícones + nomes — chamado SOMENTE ao terminar a animação de expansão."""
-        try: self.logo_col.grid_remove()
-        except Exception: pass
-        self.logo_exp_frame.grid(row=0, column=0, sticky="ew", padx=18, pady=(20, 10))
-        self.sep.grid_configure(padx=16)
-
-        for item in self.NAV_ITEMS:
-            self._btns_col[item["id"]].grid_remove()
-            self._btns_exp[item["id"]].grid(
-                row=self.NAV_ITEMS.index(item) + 2,
-                column=0, sticky="ew", padx=12, pady=3,
-            )
-
-        try: self.footer_col.grid_remove()
-        except Exception: pass
-        self.footer_exp.grid(row=100, column=0, sticky="s", pady=16)
+        return ov
 
     # ------------------------------------------------------------------ #
-    #  Animação de largura                                                 #
+    #  Mostrar / Esconder overlay                                          #
     # ------------------------------------------------------------------ #
 
-    def _animate_to(self, target: float):
-        """Inicia animação de largura para 'target'. Não altera o conteúdo."""
-        if self._anim_job:
-            self.after_cancel(self._anim_job)
-            self._anim_job = None
-        self._target_width = target
-        self._step()
+    def _show_overlay(self):
+        """Posiciona e exibe o overlay sobre o frame base."""
+        self._is_expanded = True
+        # Usa place() relativo ao parent — sem afetar o grid
+        self._overlay.place(x=0, y=0, width=self.EXPANDED_WIDTH, relheight=1.0)
+        self._overlay.lift()
 
-    def _step(self):
-        diff = self._target_width - self._current_width
-        if abs(diff) <= self.ANIM_PX_STEP:
-            # Chegou — aplica largura final
-            self._current_width = self._target_width
-            self.configure(width=int(self._current_width))
-            self._anim_job = None
-            # Só agora troca para conteúdo expandido (se foi expansão)
-            if self._target_width == self.EXPANDED_WIDTH:
-                self._is_expanded = True
-                self._show_expanded_content()
-            return
-
-        self._current_width += self.ANIM_PX_STEP if diff > 0 else -self.ANIM_PX_STEP
-        self.configure(width=int(self._current_width))
-        self._anim_job = self.after(self.ANIM_STEP_MS, self._step)
+    def _hide_overlay(self):
+        """Remove o overlay da tela."""
+        self._is_expanded = False
+        self._overlay.place_forget()
 
     # ------------------------------------------------------------------ #
     #  Hover                                                               #
     # ------------------------------------------------------------------ #
 
-    def _bind_hover(self, root):
-        for w in [root] + list(root.winfo_children()):
+    def _bind_hover_on(self, widget):
+        """Vincula hover em widget e seus filhos diretos (2 níveis)."""
+        for w in [widget] + list(widget.winfo_children()):
             try:
                 w.bind("<Enter>", self._on_enter, add="+")
                 w.bind("<Leave>", self._on_leave, add="+")
@@ -218,10 +197,8 @@ class Sidebar(ctk.CTkFrame):
         if self._collapse_job:
             self.after_cancel(self._collapse_job)
             self._collapse_job = None
-        if not self._is_expanded and self._target_width != self.EXPANDED_WIDTH:
-            # Mostra ícones compactos durante a animação de abertura
-            self._show_collapsed_content()
-            self._animate_to(self.EXPANDED_WIDTH)
+        if not self._is_expanded:
+            self._show_overlay()
 
     def _on_leave(self, event=None):
         if self._collapse_job:
@@ -230,22 +207,27 @@ class Sidebar(ctk.CTkFrame):
 
     def _check_and_collapse(self):
         self._collapse_job = None
+        # Verifica se o mouse ainda está sobre o base OU sobre o overlay
         try:
-            x, y   = self.winfo_pointerxy()
-            sx, sy = self.winfo_rootx(), self.winfo_rooty()
-            sw, sh = self.winfo_width(), self.winfo_height()
-            inside = sx <= x <= sx + sw and sy <= y <= sy + sh
+            x, y = self.winfo_pointerxy()
+            # Área do overlay
+            ox, oy = self._overlay.winfo_rootx(), self._overlay.winfo_rooty()
+            ow, oh = self._overlay.winfo_width(), self._overlay.winfo_height()
+            # Área do frame base
+            bx, by = self.winfo_rootx(), self.winfo_rooty()
+            bw, bh = self.winfo_width(), self.winfo_height()
+
+            in_overlay = ox <= x <= ox + ow and oy <= y <= oy + oh
+            in_base    = bx <= x <= bx + bw and by <= y <= by + bh
+            inside     = in_overlay or in_base
         except Exception:
             inside = False
 
-        if not inside and self._target_width != self.COLLAPSED_WIDTH:
-            # Troca conteúdo para ícones IMEDIATAMENTE, depois anima a largura
-            self._is_expanded = False
-            self._show_collapsed_content()
-            self._animate_to(self.COLLAPSED_WIDTH)
+        if not inside:
+            self._hide_overlay()
 
     # ------------------------------------------------------------------ #
-    #  Navegação                                                           #
+    #  Navegação e estado ativo                                            #
     # ------------------------------------------------------------------ #
 
     def _on_click(self, page_id):
@@ -254,12 +236,13 @@ class Sidebar(ctk.CTkFrame):
 
     def set_active(self, page_id):
         self.active_page = page_id
-        self._apply_active_style(page_id)
+        self._apply_active(page_id, self._btns_col)
+        self._apply_active(page_id, self._btns_exp)
 
-    def _apply_active_style(self, page_id):
-        for pid in self._btns_col:
+    def _apply_active(self, page_id, btns: dict):
+        for pid, btn in btns.items():
             active = pid == page_id
-            color  = COLORS["primary"] if active else "transparent"
-            tcolor = "#FFFFFF" if active else COLORS["sidebar_text"]
-            self._btns_col[pid].configure(fg_color=color, text_color=tcolor)
-            self._btns_exp[pid].configure(fg_color=color, text_color=tcolor)
+            btn.configure(
+                fg_color=COLORS["primary"] if active else "transparent",
+                text_color="#FFFFFF" if active else COLORS["sidebar_text"],
+            )
