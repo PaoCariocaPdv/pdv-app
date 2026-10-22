@@ -8,9 +8,12 @@ param(
 )
 
 $PYTHON    = "C:\Users\escri\AppData\Local\Programs\Python\Python311\python.exe"
+$ISCC      = "C:\Users\escri\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
 $REPO      = "PaoCariocaPdv/pdv-app"
 $EXE_PATH  = "dist\PDV.exe"
+$INSTALLER = "installer\PDV_Setup_v$Version.exe"
 $SPEC_FILE = "pdv.spec"
+$ISS_FILE  = "pdv_installer.iss"
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
@@ -53,18 +56,27 @@ Write-Host "      Tag v$Version publicada." -ForegroundColor Green
 # ── 5. Cria Release no GitHub com o .exe ─────────────────────
 Write-Host "[5/5] Criando Release no GitHub e enviando PDV.exe..." -ForegroundColor Yellow
 
-# Verifica se gh (GitHub CLI) está instalado
+# Gera o instalador com Inno Setup
+Write-Host "[5b/5] Gerando instalador PDV_Setup_v$Version.exe..." -ForegroundColor Yellow
+& $ISCC $ISS_FILE
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "      Instalador gerado em installer\" -ForegroundColor Green
+} else {
+    Write-Host "AVISO: Inno Setup falhou. Continuando sem instalador." -ForegroundColor Red
+}
+
+# Publica no GitHub via gh CLI
+$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
 if (Get-Command gh -ErrorAction SilentlyContinue) {
-    gh release create "v$Version" $EXE_PATH `
+    $uploadFiles = @($EXE_PATH)
+    if (Test-Path $INSTALLER) { $uploadFiles += $INSTALLER }
+    gh release create "v$Version" @uploadFiles `
         --repo $REPO `
         --title "PDV v$Version" `
         --notes "Versão $Version do PDV - Ponto de Venda"
-    Write-Host "      Release criada no GitHub!" -ForegroundColor Green
+    Write-Host "      Release criada no GitHub com .exe e instalador!" -ForegroundColor Green
 } else {
-    Write-Host ""
-    Write-Host "  AVISO: GitHub CLI (gh) não está instalado." -ForegroundColor Red
-    Write-Host "  Instale em: https://cli.github.com" -ForegroundColor Yellow
-    Write-Host "  Depois rode: gh release create v$Version dist\PDV.exe --title 'PDV v$Version'" -ForegroundColor Yellow
+    Write-Host "  AVISO: GitHub CLI (gh) não encontrado no PATH." -ForegroundColor Red
 }
 
 Write-Host ""

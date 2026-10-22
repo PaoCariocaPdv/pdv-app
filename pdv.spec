@@ -39,5 +39,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,              # Adicione um .ico aqui se quiser ícone personalizado
+    icon="icon.ico",        # Ícone do aplicativo
 )
