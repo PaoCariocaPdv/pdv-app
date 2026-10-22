@@ -88,20 +88,21 @@ def download_and_install(download_url: str, on_progress=None):
         bat_path = os.path.join(tmp_dir, "update.bat")
 
         bat_content = f"""@echo off
-timeout /t 1 /nobreak >nul
+timeout /t 2 /nobreak >nul
 taskkill /f /im PDV.exe >nul 2>&1
-timeout /t 1 /nobreak >nul
+timeout /t 2 /nobreak >nul
 set RETRIES=0
 :wait_loop
 copy /y "{new_exe_path}" "{current_exe}" >nul 2>&1
 if errorlevel 1 (
     set /a RETRIES+=1
     timeout /t 1 /nobreak >nul
-    if %RETRIES% lss 6 goto wait_loop
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList '/c timeout /t 1 /nobreak >nul & taskkill /f /im PDV.exe >nul 2>&1 & copy /y \"\"{new_exe_path}\"\" \"\"{current_exe}\"\" & start \"\" \"\"{current_exe}\"\"' -Verb RunAs"
+    if %RETRIES% lss 10 goto wait_loop
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList '/c timeout /t 2 /nobreak >nul & taskkill /f /im PDV.exe >nul 2>&1 & timeout /t 2 /nobreak >nul & copy /y \"\"{new_exe_path}\"\" \"\"{current_exe}\"\" & timeout /t 1 /nobreak >nul & start \"\" \"\"{current_exe}\"\"' -Verb RunAs"
     del "%~f0"
     exit /b
 )
+timeout /t 1 /nobreak >nul
 start "" "{current_exe}"
 del "%~f0"
 """

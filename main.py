@@ -147,11 +147,19 @@ class PDVApp(ctk.CTk):
 
 
 def main():
-    ctk.set_appearance_mode("light")
-    ctk.set_default_color_theme("blue")
+    import traceback
+    import os
+    try:
+        ctk.set_appearance_mode("light")
+        ctk.set_default_color_theme("blue")
 
-    app = PDVApp()
-    app.mainloop()
+        app = PDVApp()
+        app.mainloop()
+    except Exception as e:
+        log_path = os.path.join(os.environ.get("TEMP", "."), "pdv_crash.log")
+        with open(log_path, "w", encoding="utf-8") as f:
+            traceback.print_exc(file=f)
+        ctypes.windll.user32.MessageBoxW(0, f"Erro na inicialização:\n{e}\n\nDetalhes salvos em: {log_path}", "Erro PDV", 0x10)
 
 
 if __name__ == "__main__":
