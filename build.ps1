@@ -1,13 +1,13 @@
 # ============================================================
 #  PDV — Script de Build e Publicação Automática
-#  Uso: .\build.ps1 -Version "1.1.0"
+#  Uso: .\build.ps1 -Version "1.0.8"
 # ============================================================
 param(
     [Parameter(Mandatory=$true)]
     [string]$Version
 )
 
-$PYTHON    = "C:\Users\escri\AppData\Local\Programs\Python\Python311\python.exe"
+$PYTHON    = "python"
 $ISCC      = "C:\Users\escri\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
 $REPO      = "PaoCariocaPdv/pdv-app"
 $EXE_PATH  = "dist\PDV.exe"
@@ -28,9 +28,11 @@ $configPath = "config.py"
     Set-Content $configPath
 Write-Host "      config.py atualizado." -ForegroundColor Green
 
-(Get-Content $ISS_FILE) -replace '#define AppVersion ".*?"', "#define AppVersion `"$Version`"" |
-    Set-Content $ISS_FILE
-Write-Host "      pdv_installer.iss atualizado." -ForegroundColor Green
+if (Test-Path $ISS_FILE) {
+    (Get-Content $ISS_FILE) -replace '#define AppVersion ".*?"', "#define AppVersion `"$Version`"" |
+        Set-Content $ISS_FILE
+    Write-Host "      pdv_installer.iss atualizado." -ForegroundColor Green
+}
 
 # ── 2. Limpa builds anteriores e fecha processos ─────────────
 Write-Host "[2/5] Fechando instâncias antigas e limpando builds..." -ForegroundColor Yellow
@@ -41,7 +43,7 @@ Write-Host "      Limpo." -ForegroundColor Green
 
 # ── 3. Gera o .exe com PyInstaller ───────────────────────────
 Write-Host "[3/5] Gerando PDV.exe com PyInstaller..." -ForegroundColor Yellow
-& $PYTHON -m PyInstaller $SPEC_FILE
+& $PYTHON -m PyInstaller $SPEC_FILE --clean
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERRO: PyInstaller falhou!" -ForegroundColor Red
     exit 1
@@ -59,39 +61,24 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "      Tag v$Version publicada." -ForegroundColor Green
 
-# ── 5. Cria Release no GitHub com o .exe ─────────────────────
+# ── 5. Cria Release no GitHub e envia PDV.exe ────────────────
 Write-Host "[5/5] Criando Release no GitHub e enviando PDV.exe..." -ForegroundColor Yellow
 
-# Gera o instalador com Inno Setup
-Write-Host "[5b/5] Gerando instalador PDV_Setup_v$Version.exe..." -ForegroundColor Yellow
-& $ISCC $ISS_FILE
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "      Instalador gerado em installer\" -ForegroundColor Green
-} else {
-    Write-Host "AVISO: Inno Setup falhou. Continuando sem instalador." -ForegroundColor Red
-}
-
-# Publica no GitHub via gh CLI
-$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
-if (-not $env:GH_TOKEN -and (Test-Path ".env")) {
-    Get-Content ".env" | ForEach-Object {
-        if ($_ -match '^\s*GH_TOKEN\s*=\s*(.+)$') {
-            $env:GH_TOKEN = $matches[1].Trim()
-        }
+# Gera o instalador se Inno Setup estiver presente
+if (Test-Path $ISCC) {
+    Write-Host "      Gerando instalador PDV_Setup_v$Version.exe..." -ForegroundColor Yellow
+    & $ISCC $ISS_FILE
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "      Instalador gerado em installer\" -ForegroundColor Green
     }
 }
-if (Get-Command gh -ErrorAction SilentlyContinue) {
-    $uploadFiles = @($EXE_PATH)
-    if (Test-Path $INSTALLER) { $uploadFiles += $INSTALLER }
-    # Remove release anterior se existir
-    gh release delete "v$Version" --repo $REPO -y --cleanup-tag 2>$null
-    gh release create "v$Version" @uploadFiles `
-        --repo $REPO `
-        --title "PDV v$Version" `
-        --notes "Release v$Version do PDV - Ponto de Venda. Padronização visual completa: cores oficiais, tipografia Plus Jakarta Sans e Inter, novos cards, botões padronizados e tela de Caixa."
-    Write-Host "      Release criada no GitHub com .exe e instalador!" -ForegroundColor Green
+
+# Publica a release via script Python
+& $PYTHON publish_release.py $Version $EXE_PATH
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "      Release criada no GitHub com sucesso!" -ForegroundColor Green
 } else {
-    Write-Host "  AVISO: GitHub CLI (gh) não encontrado no PATH." -ForegroundColor Red
+    Write-Host "ERRO ao publicar release no GitHub." -ForegroundColor Red
 }
 
 Write-Host ""
