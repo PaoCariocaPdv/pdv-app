@@ -43,14 +43,14 @@ class Sidebar(ctk.CTkFrame):
 
         ctk.CTkLabel(
             logo_frame,
-            text="🍞 PDV",
+            text="🖥️ PDV",
             font=ctk.CTkFont("Inter", 22, "bold"),
             text_color="#FFFFFF",
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             logo_frame,
-            text="Pão Carioca PDV",
+            text="Sistema de Caixa PDV",
             font=ctk.CTkFont("Inter", 11),
             text_color=COLORS["sidebar_text_hover"],
         ).pack(anchor="w")

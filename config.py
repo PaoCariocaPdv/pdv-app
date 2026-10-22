@@ -5,7 +5,7 @@ Configurações globais do aplicativo
 
 # Informações do App
 APP_NAME = "PDV - Caixa"
-APP_VERSION = "1.0.3"
+APP_VERSION = "1.0.4"
 
 # GitHub — usado pelo auto-updater
 GITHUB_USER = "PaoCariocaPdv"
