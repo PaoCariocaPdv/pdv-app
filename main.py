@@ -25,6 +25,9 @@ class PDVApp(ctk.CTk):
         self.minsize(APP_MIN_WIDTH, APP_MIN_HEIGHT)
         self.configure(fg_color=COLORS["bg_primary"])
 
+        # Ícone da janela
+        self._set_app_icon()
+
         # Centraliza a janela na tela
         self._center_window()
 
@@ -39,6 +42,18 @@ class PDVApp(ctk.CTk):
 
         # Verifica atualização em background (3s após abrir)
         self.after(3000, self._check_for_updates)
+
+    def _set_app_icon(self):
+        """Define o ícone da janela principal."""
+        import os, sys
+        icon_path = "icon.ico"
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            icon_path = os.path.join(sys._MEIPASS, "icon.ico")
+        if os.path.exists(icon_path):
+            try:
+                self.iconbitmap(icon_path)
+            except Exception:
+                pass
 
     def _center_window(self):
         self.update_idletasks()

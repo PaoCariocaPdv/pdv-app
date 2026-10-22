@@ -21,15 +21,21 @@ Write-Host "  PDV Build & Release — v$Version" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ── 1. Atualiza versão no config.py ──────────────────────────
+# ── 1. Atualiza versão no config.py e pdv_installer.iss ───────
 Write-Host "[1/5] Atualizando versão para v$Version..." -ForegroundColor Yellow
 $configPath = "config.py"
 (Get-Content $configPath) -replace 'APP_VERSION = ".*?"', "APP_VERSION = `"$Version`"" |
     Set-Content $configPath
 Write-Host "      config.py atualizado." -ForegroundColor Green
 
-# ── 2. Limpa builds anteriores ───────────────────────────────
-Write-Host "[2/5] Limpando builds anteriores..." -ForegroundColor Yellow
+(Get-Content $ISS_FILE) -replace '#define AppVersion ".*?"', "#define AppVersion `"$Version`"" |
+    Set-Content $ISS_FILE
+Write-Host "      pdv_installer.iss atualizado." -ForegroundColor Green
+
+# ── 2. Limpa builds anteriores e fecha processos ─────────────
+Write-Host "[2/5] Fechando instâncias antigas e limpando builds..." -ForegroundColor Yellow
+Stop-Process -Name "PDV" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
 Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
 Write-Host "      Limpo." -ForegroundColor Green
 
@@ -46,8 +52,8 @@ Write-Host "      PDV.exe gerado em dist\" -ForegroundColor Green
 Write-Host "[4/5] Publicando tag v$Version no GitHub..." -ForegroundColor Yellow
 git add -A
 git commit -m "Release v$Version"
-git tag "v$Version"
-git push origin main --tags
+git tag -f "v$Version"
+git push origin main --tags -f
 if ($LASTEXITCODE -ne 0) {
     Write-Host "AVISO: git push falhou. Verifique sua conexão ou credenciais." -ForegroundColor Red
 }
@@ -67,13 +73,22 @@ if ($LASTEXITCODE -eq 0) {
 
 # Publica no GitHub via gh CLI
 $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
+if (-not $env:GH_TOKEN -and (Test-Path ".env")) {
+    Get-Content ".env" | ForEach-Object {
+        if ($_ -match '^\s*GH_TOKEN\s*=\s*(.+)$') {
+            $env:GH_TOKEN = $matches[1].Trim()
+        }
+    }
+}
 if (Get-Command gh -ErrorAction SilentlyContinue) {
     $uploadFiles = @($EXE_PATH)
     if (Test-Path $INSTALLER) { $uploadFiles += $INSTALLER }
+    # Remove release anterior se existir
+    gh release delete "v$Version" --repo $REPO -y --cleanup-tag 2>$null
     gh release create "v$Version" @uploadFiles `
         --repo $REPO `
         --title "PDV v$Version" `
-        --notes "Versão $Version do PDV - Ponto de Venda"
+        --notes "Release v$Version do PDV - Ponto de Venda. Inclui ícone de pão e auto-atualização aprimorada."
     Write-Host "      Release criada no GitHub com .exe e instalador!" -ForegroundColor Green
 } else {
     Write-Host "  AVISO: GitHub CLI (gh) não encontrado no PATH." -ForegroundColor Red

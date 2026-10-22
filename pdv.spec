@@ -4,12 +4,13 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 # Coleta arquivos de dados do CustomTkinter (temas, imagens, fontes)
 ctk_datas = collect_data_files("customtkinter")
+app_datas = ctk_datas + [("icon.ico", ".")]
 
 a = Analysis(
     ["main.py"],
     pathex=["."],
     binaries=[],
-    datas=ctk_datas,
+    datas=app_datas,
     hiddenimports=collect_submodules("customtkinter"),
     hookspath=[],
     hooksconfig={},

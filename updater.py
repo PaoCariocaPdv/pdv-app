@@ -45,9 +45,16 @@ def check_for_update() -> dict | None:
 
     try:
         if _version_tuple(latest_version) > _version_tuple(APP_VERSION):
-            # Procura o .exe nos assets da release
+            # Procura especificamente PDV.exe nos assets da release
             for asset in release.get("assets", []):
-                if asset["name"].endswith(".exe"):
+                if asset["name"].lower() == "pdv.exe":
+                    return {
+                        "version": latest_version,
+                        "download_url": asset["browser_download_url"],
+                        "notes": release.get("body", ""),
+                    }
+            for asset in release.get("assets", []):
+                if asset["name"].lower().endswith(".exe") and not asset["name"].lower().startswith("pdv_setup"):
                     return {
                         "version": latest_version,
                         "download_url": asset["browser_download_url"],
@@ -77,16 +84,21 @@ def download_and_install(download_url: str, on_progress=None):
         urllib.request.urlretrieve(download_url, new_exe_path, _reporthook)
 
         # Script bat que substitui o exe atual depois que o app fechar
-        current_exe = sys.executable if getattr(sys, "frozen", False) else __file__
+        current_exe = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(__file__)
         bat_path = os.path.join(tmp_dir, "update.bat")
 
         bat_content = f"""@echo off
 timeout /t 2 /nobreak >nul
-copy /y "{new_exe_path}" "{current_exe}"
+copy /y "{new_exe_path}" "{current_exe}" >nul 2>&1
+if errorlevel 1 (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList '/c timeout /t 1 /nobreak >nul & copy /y \"\"{new_exe_path}\"\" \"\"{current_exe}\"\" & start \"\" \"\"{current_exe}\"\"' -Verb RunAs"
+    del "%~f0"
+    exit /b
+)
 start "" "{current_exe}"
 del "%~f0"
 """
-        with open(bat_path, "w") as f:
+        with open(bat_path, "w", encoding="utf-8") as f:
             f.write(bat_content)
 
         subprocess.Popen(["cmd.exe", "/c", bat_path], shell=False,

@@ -10,10 +10,12 @@ build/
 dist/
 *.spec.bak
 
-# Ambiente virtual
+# Ambiente virtual e variaveis locais
 venv/
 .env/
 env/
+.env
+installer/
 
 # Credenciais (NUNCA suba isso!)
 firebase_credentials.json

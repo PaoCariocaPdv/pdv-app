@@ -4,7 +4,7 @@ Componente: Barra lateral de navegação
 """
 
 import customtkinter as ctk
-from config import COLORS, FONTS
+from config import COLORS, FONTS, APP_VERSION
 
 
 class Sidebar(ctk.CTkFrame):
@@ -43,14 +43,14 @@ class Sidebar(ctk.CTkFrame):
 
         ctk.CTkLabel(
             logo_frame,
-            text="💳 PDV",
+            text="🍞 PDV",
             font=ctk.CTkFont("Inter", 22, "bold"),
             text_color="#FFFFFF",
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             logo_frame,
-            text="Ponto de Venda",
+            text="Pão Carioca PDV",
             font=ctk.CTkFont("Inter", 11),
             text_color=COLORS["sidebar_text_hover"],
         ).pack(anchor="w")
@@ -68,7 +68,7 @@ class Sidebar(ctk.CTkFrame):
         # Versão no rodapé
         ctk.CTkLabel(
             self,
-            text="v1.0.0",
+            text=f"v{APP_VERSION}",
             font=ctk.CTkFont("Inter", 10),
             text_color="#555570",
         ).grid(row=100, column=0, sticky="s", pady=16)

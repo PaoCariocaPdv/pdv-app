@@ -4,7 +4,7 @@
 ; ============================================================
 
 #define AppName    "PDV - Caixa"
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.1"
 #define AppPublisher "PaoCariocaPdv"
 #define AppExeName "PDV.exe"
 #define AppURL "https://github.com/PaoCariocaPdv/pdv-app"
@@ -31,7 +31,8 @@ WizardResizable=no
 DisableWelcomePage=no
 DisableDirPage=no
 DisableProgramGroupPage=yes
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
 VersionInfoVersion={#AppVersion}
