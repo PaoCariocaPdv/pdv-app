@@ -80,13 +80,19 @@ class PDVApp(ctk.CTk):
 
     def _build_layout(self):
         """Monta o layout principal: sidebar à esquerda + área de conteúdo."""
-        self.grid_columnconfigure(0, weight=0, minsize=0)
+        self.grid_columnconfigure(0, weight=0, minsize=70)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # Sidebar
-        self.sidebar = Sidebar(self, navigate_callback=self.navigate)
-        self.sidebar.grid(row=0, column=0, sticky="nsew")
+        # Espaçador estático: reserva 70px no grid para que o conteúdo nunca seja empurrado
+        self.sidebar_spacer = ctk.CTkFrame(
+            self,
+            width=70,
+            fg_color=COLORS["sidebar_bg"],
+            corner_radius=0,
+        )
+        self.sidebar_spacer.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_spacer.grid_propagate(False)
 
         # Área de conteúdo
         self.content_area = ctk.CTkFrame(
@@ -97,6 +103,11 @@ class PDVApp(ctk.CTk):
         self.content_area.grid(row=0, column=1, sticky="nsew")
         self.content_area.grid_columnconfigure(0, weight=1)
         self.content_area.grid_rowconfigure(0, weight=1)
+
+        # Sidebar em Overlay (drawer) sobreposto no topo da janela (igual ao Caixa Bolo)
+        self.sidebar = Sidebar(self, navigate_callback=self.navigate)
+        self.sidebar.place(x=0, y=0, relheight=1.0)
+        self.sidebar.lift()
 
         # Mapa de páginas
         self._pages: dict[str, ctk.CTkFrame] = {}
@@ -139,8 +150,9 @@ class PDVApp(ctk.CTk):
         page.grid(row=0, column=0, sticky="nsew")
         self._current_page = page
 
-        # Atualiza estado ativo na sidebar
+        # Atualiza estado ativo na sidebar e garante sobreposição no topo
         self.sidebar.set_active(page_id)
+        self.sidebar.lift()
 
     def _check_for_updates(self):
         """Verifica atualizações em background sem travar a UI."""
