@@ -88,9 +88,13 @@ def download_and_install(download_url: str, on_progress=None):
         bat_path = os.path.join(tmp_dir, "update.bat")
 
         bat_content = f"""@echo off
-timeout /t 2 /nobreak >nul
+set RETRIES=0
+:wait_loop
+timeout /t 1 /nobreak >nul
 copy /y "{new_exe_path}" "{current_exe}" >nul 2>&1
 if errorlevel 1 (
+    set /a RETRIES+=1
+    if %RETRIES% lss 5 goto wait_loop
     powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList '/c timeout /t 1 /nobreak >nul & copy /y \"\"{new_exe_path}\"\" \"\"{current_exe}\"\" & start \"\" \"\"{current_exe}\"\"' -Verb RunAs"
     del "%~f0"
     exit /b

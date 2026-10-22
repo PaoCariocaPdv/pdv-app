@@ -4,7 +4,7 @@
 ; ============================================================
 
 #define AppName    "PDV - Caixa"
-#define AppVersion "1.0.1"
+#define AppVersion "1.0.2"
 #define AppPublisher "PaoCariocaPdv"
 #define AppExeName "PDV.exe"
 #define AppURL "https://github.com/PaoCariocaPdv/pdv-app"
@@ -17,7 +17,8 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\PDV
+DefaultDirName={localappdata}\Programs\PDV
+UsePreviousAppDir=no
 DefaultGroupName={#AppName}
 AllowNoIcons=no
 LicenseFile=
@@ -48,12 +49,13 @@ Name: "startmenuicon"; Description: "Criar atalho no Menu Iniciar"; GroupDescrip
 
 [Files]
 Source: "dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\icon.ico"
 Name: "{group}\Desinstalar {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
-Name: "{userstartmenu}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startmenuicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon; IconFilename: "{app}\icon.ico"
+Name: "{userstartmenu}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startmenuicon; IconFilename: "{app}\icon.ico"
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Executar {#AppName} agora"; Flags: nowait postinstall skipifsilent

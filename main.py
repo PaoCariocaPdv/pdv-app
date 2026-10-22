@@ -3,6 +3,8 @@ PDV - Ponto de Venda
 Arquivo principal — ponto de entrada do aplicativo
 """
 
+import sys
+import ctypes
 import customtkinter as ctk
 from config import APP_NAME, APP_WIDTH, APP_HEIGHT, APP_MIN_WIDTH, APP_MIN_HEIGHT, COLORS
 from database import initialize_firebase
@@ -11,6 +13,14 @@ from components.update_dialog import UpdateDialog
 from pages.home import HomePage
 from pages.placeholder import PlaceholderPage
 from updater import check_update_async
+
+# Garante que a barra de tarefas do Windows use o ícone e agrupe no mesmo atalho
+if sys.platform == "win32":
+    try:
+        app_id = "paocarioca.pdv.app"
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+    except Exception:
+        pass
 
 
 class PDVApp(ctk.CTk):
