@@ -80,6 +80,7 @@ class PDVApp(ctk.CTk):
 
     def _build_layout(self):
         """Monta o layout principal: sidebar à esquerda + área de conteúdo."""
+        self.grid_columnconfigure(0, weight=0, minsize=0)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
