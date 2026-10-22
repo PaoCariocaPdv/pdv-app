@@ -88,14 +88,17 @@ def download_and_install(download_url: str, on_progress=None):
         bat_path = os.path.join(tmp_dir, "update.bat")
 
         bat_content = f"""@echo off
+timeout /t 1 /nobreak >nul
+taskkill /f /im PDV.exe >nul 2>&1
+timeout /t 1 /nobreak >nul
 set RETRIES=0
 :wait_loop
-timeout /t 1 /nobreak >nul
 copy /y "{new_exe_path}" "{current_exe}" >nul 2>&1
 if errorlevel 1 (
     set /a RETRIES+=1
-    if %RETRIES% lss 5 goto wait_loop
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList '/c timeout /t 1 /nobreak >nul & copy /y \"\"{new_exe_path}\"\" \"\"{current_exe}\"\" & start \"\" \"\"{current_exe}\"\"' -Verb RunAs"
+    timeout /t 1 /nobreak >nul
+    if %RETRIES% lss 6 goto wait_loop
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList '/c timeout /t 1 /nobreak >nul & taskkill /f /im PDV.exe >nul 2>&1 & copy /y \"\"{new_exe_path}\"\" \"\"{current_exe}\"\" & start \"\" \"\"{current_exe}\"\"' -Verb RunAs"
     del "%~f0"
     exit /b
 )
@@ -105,9 +108,16 @@ del "%~f0"
         with open(bat_path, "w", encoding="utf-8") as f:
             f.write(bat_content)
 
-        subprocess.Popen(["cmd.exe", "/c", bat_path], shell=False,
-                         creationflags=subprocess.CREATE_NO_WINDOW)
-        sys.exit(0)
+        DETACHED_PROCESS = 0x00000008
+        subprocess.Popen(
+            ["cmd.exe", "/c", bat_path],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=subprocess.CREATE_NO_WINDOW | DETACHED_PROCESS,
+        )
+        os._exit(0)
 
     except Exception as e:
         raise RuntimeError(f"Falha no download: {e}")
