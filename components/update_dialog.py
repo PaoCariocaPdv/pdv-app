@@ -1,21 +1,23 @@
 """
 PDV - Ponto de Venda
-Componente: Diálogo de atualização disponível
+Componente: Diálogo de atualização disponível (Padronizado)
 """
 
 import threading
 import customtkinter as ctk
 from config import COLORS
+from fonts import get_font
+from components.ui import PrimaryButton, SecondaryButton, StatusPill
 
 
 class UpdateDialog(ctk.CTkToplevel):
-    """Janela de notificação de nova versão disponível."""
+    """Janela de notificação de nova versão disponível com o Design System oficial."""
 
     def __init__(self, parent, update_info: dict):
         super().__init__(parent)
         self.update_info = update_info
         self.title("Atualização Disponível")
-        self.geometry("420x260")
+        self.geometry("460x280")
         self.resizable(False, False)
         self.grab_set()  # Modal
         self._center(parent)
@@ -23,78 +25,75 @@ class UpdateDialog(ctk.CTkToplevel):
 
     def _center(self, parent):
         self.update_idletasks()
-        px = parent.winfo_x() + parent.winfo_width() // 2 - 210
-        py = parent.winfo_y() + parent.winfo_height() // 2 - 130
+        px = parent.winfo_x() + parent.winfo_width() // 2 - 230
+        py = parent.winfo_y() + parent.winfo_height() // 2 - 140
         self.geometry(f"+{px}+{py}")
 
     def _build(self):
-        self.configure(fg_color=COLORS["bg_primary"])
+        self.configure(fg_color=COLORS["card_bg"])
 
-        # Ícone + título
-        ctk.CTkLabel(
-            self, text="🔄", font=ctk.CTkFont(size=40)
-        ).pack(pady=(24, 4))
+        content = ctk.CTkFrame(self, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=28, pady=24)
+
+        # Header com Pill
+        StatusPill(content, text="Nova Versão", status="info", icon="🔄").pack(anchor="w", pady=(0, 10))
 
         ctk.CTkLabel(
-            self,
+            content,
             text="Atualização Disponível!",
-            font=ctk.CTkFont("Inter", 18, "bold"),
+            font=get_font("subtitle"),
             text_color=COLORS["text_primary"],
-        ).pack()
+        ).pack(anchor="w")
 
         ctk.CTkLabel(
-            self,
-            text=f"Nova versão: v{self.update_info['version']}",
-            font=ctk.CTkFont("Inter", 13),
-            text_color=COLORS["accent"],
-        ).pack(pady=(4, 16))
+            content,
+            text=f"A versão v{self.update_info['version']} já está pronta para instalação.",
+            font=get_font("body"),
+            text_color=COLORS["text_secondary"],
+        ).pack(anchor="w", pady=(4, 16))
 
         # Barra de progresso (oculta inicialmente)
-        self.progress_bar = ctk.CTkProgressBar(self, width=340)
+        self.progress_bar = ctk.CTkProgressBar(
+            content,
+            width=400,
+            progress_color=COLORS["primary"],
+            fg_color=COLORS["selected_bg"],
+        )
         self.progress_bar.set(0)
 
         self.status_label = ctk.CTkLabel(
-            self,
+            content,
             text="",
-            font=ctk.CTkFont("Inter", 11),
+            font=get_font("caption"),
             text_color=COLORS["text_secondary"],
         )
 
         # Botões
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.pack(pady=4)
+        btn_frame = ctk.CTkFrame(content, fg_color="transparent")
+        btn_frame.pack(side="bottom", fill="x", pady=(12, 0))
 
-        self.later_btn = ctk.CTkButton(
+        self.later_btn = SecondaryButton(
             btn_frame,
             text="Agora não",
-            width=140,
-            height=38,
-            fg_color=COLORS["bg_secondary"],
-            hover_color=COLORS["border"],
-            text_color=COLORS["text_primary"],
-            font=ctk.CTkFont("Inter", 13),
+            width=130,
             command=self.destroy,
         )
-        self.later_btn.grid(row=0, column=0, padx=8)
+        self.later_btn.pack(side="right", padx=(10, 0))
 
-        self.update_btn = ctk.CTkButton(
+        self.update_btn = PrimaryButton(
             btn_frame,
-            text="✅  Atualizar agora",
+            text="Atualizar Agora",
             width=160,
-            height=38,
-            fg_color=COLORS["accent"],
-            hover_color=COLORS["accent_hover"],
-            font=ctk.CTkFont("Inter", 13, "bold"),
             command=self._start_update,
         )
-        self.update_btn.grid(row=0, column=1, padx=8)
+        self.update_btn.pack(side="right")
 
     def _start_update(self):
         """Inicia o download em background e mostra progresso."""
         self.later_btn.configure(state="disabled")
         self.update_btn.configure(state="disabled", text="Baixando...")
 
-        self.status_label.pack(pady=(8, 2))
+        self.status_label.pack(pady=(6, 2))
         self.progress_bar.pack(pady=(0, 8))
         self.progress_bar.configure(mode="indeterminate")
         self.progress_bar.start()
@@ -103,7 +102,7 @@ class UpdateDialog(ctk.CTkToplevel):
             self.progress_bar.configure(mode="determinate")
             self.progress_bar.stop()
             self.progress_bar.set(percent / 100)
-            self.status_label.configure(text=f"Baixando... {percent}%")
+            self.status_label.configure(text=f"Baixando nova versão... {percent}%")
 
         def _run():
             try:
@@ -120,7 +119,7 @@ class UpdateDialog(ctk.CTkToplevel):
     def _show_error(self, msg):
         self.progress_bar.stop()
         self.status_label.configure(
-            text=f"❌ Erro: {msg}", text_color=COLORS["danger"]
+            text=f"Erro no download: {msg}", text_color=COLORS["status_danger"]
         )
         self.later_btn.configure(state="normal")
         self.update_btn.configure(state="normal", text="Tentar novamente")

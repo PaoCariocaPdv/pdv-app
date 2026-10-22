@@ -1,14 +1,15 @@
 """
 PDV - Ponto de Venda
-Componente: Barra lateral de navegação
+Componente: Barra lateral de navegação (Menu Lateral Escuro #0B1B33)
 """
 
 import customtkinter as ctk
-from config import COLORS, FONTS, APP_VERSION
+from config import COLORS, APP_VERSION
+from fonts import get_font
 
 
 class Sidebar(ctk.CTkFrame):
-    """Barra lateral de navegação do app."""
+    """Barra lateral de navegação estilizada conforme o Design System."""
 
     NAV_ITEMS = [
         {"id": "home",     "icon": "🏠", "label": "Início"},
@@ -23,8 +24,8 @@ class Sidebar(ctk.CTkFrame):
     def __init__(self, parent, navigate_callback, **kwargs):
         super().__init__(
             parent,
-            width=220,
-            fg_color=COLORS["bg_sidebar"],
+            width=230,
+            fg_color=COLORS["sidebar_bg"],
             corner_radius=0,
             **kwargs
         )
@@ -39,39 +40,42 @@ class Sidebar(ctk.CTkFrame):
 
         # Logo / Título
         logo_frame = ctk.CTkFrame(self, fg_color="transparent")
-        logo_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(24, 10))
+        logo_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(24, 12))
 
         ctk.CTkLabel(
             logo_frame,
-            text="🖥️ PDV",
-            font=ctk.CTkFont("Inter", 22, "bold"),
+            text="🖥️  PDV Caixa",
+            font=get_font("sidebar_title"),
             text_color="#FFFFFF",
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             logo_frame,
-            text="Sistema de Caixa PDV",
-            font=ctk.CTkFont("Inter", 11),
-            text_color=COLORS["sidebar_text_hover"],
-        ).pack(anchor="w")
+            text="Sistema de Ponto de Venda",
+            font=get_font("small"),
+            text_color=COLORS["sidebar_text"],
+        ).pack(anchor="w", pady=(2, 0))
 
-        # Separador
-        sep = ctk.CTkFrame(self, height=1, fg_color="#3D3D5C", corner_radius=0)
-        sep.grid(row=1, column=0, sticky="ew", padx=16, pady=(8, 16))
+        # Separador elegante
+        sep = ctk.CTkFrame(self, height=1, fg_color="#1D2E47", corner_radius=0)
+        sep.grid(row=1, column=0, sticky="ew", padx=16, pady=(10, 16))
 
         # Itens de navegação
         for i, item in enumerate(self.NAV_ITEMS):
             btn = self._make_nav_button(item)
-            btn.grid(row=i + 2, column=0, sticky="ew", padx=10, pady=2)
+            btn.grid(row=i + 2, column=0, sticky="ew", padx=12, pady=3)
             self._buttons[item["id"]] = btn
 
         # Versão no rodapé
+        footer_frame = ctk.CTkFrame(self, fg_color="transparent")
+        footer_frame.grid(row=100, column=0, sticky="s", pady=16)
+
         ctk.CTkLabel(
-            self,
-            text=f"v{APP_VERSION}",
-            font=ctk.CTkFont("Inter", 10),
-            text_color="#555570",
-        ).grid(row=100, column=0, sticky="s", pady=16)
+            footer_frame,
+            text=f"PDV v{APP_VERSION}",
+            font=get_font("small"),
+            text_color="#627594",
+        ).pack()
 
         self.set_active("home")
 
@@ -79,13 +83,13 @@ class Sidebar(ctk.CTkFrame):
         btn = ctk.CTkButton(
             self,
             text=f"  {item['icon']}  {item['label']}",
-            font=ctk.CTkFont("Inter", 13),
+            font=get_font("sidebar_item"),
             anchor="w",
-            height=42,
+            height=44,
             corner_radius=10,
             fg_color="transparent",
             hover_color=COLORS["sidebar_active"],
-            text_color=COLORS["sidebar_text_hover"],
+            text_color=COLORS["sidebar_text"],
             command=lambda p=item["id"]: self._on_click(p),
         )
         return btn
@@ -99,11 +103,11 @@ class Sidebar(ctk.CTkFrame):
         for pid, btn in self._buttons.items():
             if pid == page_id:
                 btn.configure(
-                    fg_color=COLORS["sidebar_active"],
+                    fg_color=COLORS["primary"],
                     text_color="#FFFFFF",
                 )
             else:
                 btn.configure(
                     fg_color="transparent",
-                    text_color=COLORS["sidebar_text_hover"],
+                    text_color=COLORS["sidebar_text"],
                 )

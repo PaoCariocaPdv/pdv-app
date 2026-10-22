@@ -88,7 +88,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     gh release create "v$Version" @uploadFiles `
         --repo $REPO `
         --title "PDV v$Version" `
-        --notes "Release v$Version do PDV - Ponto de Venda. Inclui ícone de pão e auto-atualização aprimorada."
+        --notes "Release v$Version do PDV - Ponto de Venda. Padronização visual completa: cores oficiais, tipografia Plus Jakarta Sans e Inter, novos cards, botões padronizados e tela de Caixa."
     Write-Host "      Release criada no GitHub com .exe e instalador!" -ForegroundColor Green
 } else {
     Write-Host "  AVISO: GitHub CLI (gh) não encontrado no PATH." -ForegroundColor Red

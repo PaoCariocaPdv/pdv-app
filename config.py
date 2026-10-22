@@ -1,49 +1,88 @@
 """
 PDV - Ponto de Venda
-Configurações globais do aplicativo
+Configurações globais do aplicativo — Sistema de Cores e Tipografia Padronizados
 """
 
 # Informações do App
 APP_NAME = "PDV - Caixa"
-APP_VERSION = "1.0.6"
+APP_VERSION = "1.0.7"
 
 # GitHub — usado pelo auto-updater
 GITHUB_USER = "PaoCariocaPdv"
 GITHUB_REPO = "pdv-app"
+
+# Dimensões da Janela
 APP_WIDTH = 1280
 APP_HEIGHT = 800
 APP_MIN_WIDTH = 1024
 APP_MIN_HEIGHT = 600
 
-# Cores do tema
+# ==============================================================================
+# PALETA DE CORES OFICIAL
+# ==============================================================================
 COLORS = {
-    "bg_primary": "#FFFFFF",
-    "bg_secondary": "#F5F5F5",
-    "bg_sidebar": "#1E1E2E",
-    "sidebar_text": "#FFFFFF",
-    "sidebar_text_hover": "#A0A0B0",
-    "sidebar_active": "#2D2D44",
-    "accent": "#4F46E5",
-    "accent_hover": "#4338CA",
-    "text_primary": "#1A1A2E",
-    "text_secondary": "#6B7280",
-    "border": "#E5E7EB",
-    "success": "#10B981",
-    "danger": "#EF4444",
-    "warning": "#F59E0B",
+    # ── Marca ─────────────────────────────────────────────────────────────
+    "primary": "#1D4ED8",               # Primária (botões, preços, seleção)
+    "primary_hover": "#1E40AF",         # Primária no hover/pressionado
+    "selected_bg": "#EAF0FF",           # Fundo de item selecionado
+    "sidebar_bg": "#0B1B33",            # Menu lateral e card de total
+    "sidebar_text": "#B8C4DA",          # Texto sobre o menu escuro
+    "sidebar_active": "#162B4E",        # Item ativo no menu escuro
+    "highlight": "#D97706",             # Destaque (detalhes e promoções)
+
+    # ── Base ──────────────────────────────────────────────────────────────
+    "bg_screen": "#F3F5F9",             # Fundo da tela
+    "card_bg": "#FFFFFF",               # Cards e painéis
+    "border": "#DDE3EC",                # Bordas
+    "text_primary": "#0F1A2E",          # Texto principal
+    "text_secondary": "#566178",        # Texto secundário
+
+    # ── Status ────────────────────────────────────────────────────────────
+    # Sucesso / Pago
+    "status_success": "#0E7A4F",
+    "status_success_bg": "#E3F6EC",
+    "status_success_text": "#0B6140",
+
+    # Erro / Cancelado
+    "status_danger": "#C62828",
+    "status_danger_bg": "#FDE8E8",
+    "status_danger_text": "#9B1C1C",
+
+    # Atenção / Pendente / Estoque baixo
+    "status_warning_bg": "#FFF4DC",
+    "status_warning_border": "#F3D391",
+    "status_warning_text": "#8A4B08",
+
+    # Informação
+    "status_info": "#0E7490",
+    "status_info_bg": "#E0F2FE",
+    "status_info_text": "#0E7490",
+
+    # ── Compatibilidade Retroativa ─────────────────────────────────────────
+    "bg_primary": "#F3F5F9",            # Mapeia para o novo fundo da tela
+    "bg_secondary": "#FFFFFF",          # Mapeia para fundo de cards
+    "bg_sidebar": "#0B1B33",            # Menu lateral
+    "sidebar_text_hover": "#FFFFFF",
+    "accent": "#1D4ED8",
+    "accent_hover": "#1E40AF",
+    "success": "#0E7A4F",
+    "danger": "#C62828",
+    "warning": "#8A4B08",
 }
 
-# Fontes
-FONTS = {
-    "title": ("Inter", 24, "bold"),
-    "subtitle": ("Inter", 16, "bold"),
-    "body": ("Inter", 13),
-    "small": ("Inter", 11),
-    "button": ("Inter", 13, "bold"),
+# Medidas Padronizadas
+MEASUREMENTS = {
+    "card_radius": 12,
+    "card_border_width": 1,
+    "selected_border_width": 2,
+    "button_radius": 12,
+    "button_height": 48,
+    "button_finish_height": 60,
+    "pill_radius": 16,
 }
 
-# Firebase - Configure suas credenciais aqui
+# Firebase - Configurações
 FIREBASE_CONFIG = {
-    "credential_path": "firebase_credentials.json",  # Arquivo de credenciais do Firebase
-    "database_url": "",  # URL do seu Firestore (deixe vazio para Firestore padrão)
+    "credential_path": "firebase_credentials.json",
+    "database_url": "",
 }

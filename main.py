@@ -7,10 +7,12 @@ import sys
 import ctypes
 import customtkinter as ctk
 from config import APP_NAME, APP_WIDTH, APP_HEIGHT, APP_MIN_WIDTH, APP_MIN_HEIGHT, COLORS
+from fonts import init_fonts
 from database import initialize_firebase
 from components.sidebar import Sidebar
 from components.update_dialog import UpdateDialog
 from pages.home import HomePage
+from pages.caixa import CaixaPage
 from pages.placeholder import PlaceholderPage
 from updater import check_update_async
 
@@ -29,11 +31,14 @@ class PDVApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        # Inicializa fontes oficiais (Plus Jakarta Sans & Inter)
+        init_fonts()
+
         # Configuração da janela
         self.title(APP_NAME)
         self.geometry(f"{APP_WIDTH}x{APP_HEIGHT}")
         self.minsize(APP_MIN_WIDTH, APP_MIN_HEIGHT)
-        self.configure(fg_color=COLORS["bg_primary"])
+        self.configure(fg_color=COLORS["bg_screen"])
 
         # Ícone da janela
         self._set_app_icon()
@@ -55,7 +60,7 @@ class PDVApp(ctk.CTk):
 
     def _set_app_icon(self):
         """Define o ícone da janela principal."""
-        import os, sys
+        import os
         icon_path = "icon.ico"
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
             icon_path = os.path.join(sys._MEIPASS, "icon.ico")
@@ -85,7 +90,7 @@ class PDVApp(ctk.CTk):
         # Área de conteúdo
         self.content_area = ctk.CTkFrame(
             self,
-            fg_color=COLORS["bg_primary"],
+            fg_color=COLORS["bg_screen"],
             corner_radius=0,
         )
         self.content_area.grid(row=0, column=1, sticky="nsew")
@@ -107,15 +112,16 @@ class PDVApp(ctk.CTk):
     def _create_page(self, page_id: str) -> ctk.CTkFrame:
         """Instancia a página correta pelo ID."""
         titles = {
-            "caixa":    "Caixa / PDV",
-            "produtos": "Produtos",
-            "vendas":   "Vendas",
-            "clientes": "Clientes",
-            "relatorio":"Relatórios",
-            "config":   "Configurações",
+            "produtos": "Produtos & Estoque",
+            "vendas":   "Histórico de Vendas",
+            "clientes": "Gestão de Clientes",
+            "relatorio":"Relatórios Financeiros",
+            "config":   "Configurações do Sistema",
         }
         if page_id == "home":
             return HomePage(self.content_area)
+        if page_id == "caixa":
+            return CaixaPage(self.content_area)
         return PlaceholderPage(self.content_area, title=titles.get(page_id, page_id.capitalize()))
 
     def navigate(self, page_id: str):
