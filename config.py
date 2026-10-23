@@ -5,7 +5,7 @@ Configurações globais do aplicativo — Sistema de Cores e Tipografia Padroniz
 
 # Informações do App
 APP_NAME = "PDV - Caixa"
-APP_VERSION = "1.0.10"
+APP_VERSION = "1.0.11"
 
 # GitHub — usado pelo auto-updater
 GITHUB_USER = "PaoCariocaPdv"

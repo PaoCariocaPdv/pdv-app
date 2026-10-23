@@ -1,9 +1,12 @@
-"""
+﻿"""
 PDV - Ponto de Venda
 Componente: Barra lateral de navegação retrátil (Overlay Drawer)
-- Ícones matematicamente fixos na mesma posição (x = 24px) o tempo todo.
-- Animação suave com easing (ease-out) sem qualquer rasgo ou salto visual.
-- Texto aparece apenas quando a largura ultrapassa o limiar, sem causar reflow.
+
+Arquitetura "clip-frame":
+  - Frame EXTERNO (Sidebar): só a largura muda durante a animação (70 -> 240px).
+  - Frame INTERNO (_inner): sempre 240px, contém todos os widgets estáticos.
+  - O sistema operacional recorta o frame interno automaticamente no limite do externo.
+  - ZERO reconfigurações de widgets filhos durante a animação -> sem artefatos visuais.
 """
 
 import os
@@ -16,14 +19,15 @@ from fonts import get_font
 
 class Sidebar(ctk.CTkFrame):
     """
-    Barra lateral com animação suave, ícones fixos e sem artefatos visuais.
+    Barra lateral com animação suave e sem artefatos.
+    Frame externo = clip mask (width anima).
+    Frame interno = conteudo estatico (width = EXPANDED_WIDTH sempre).
     """
 
     COLLAPSED_WIDTH  = 70
     EXPANDED_WIDTH   = 240
-    TEXT_THRESHOLD   = 140   # largura mínima para mostrar texto
-    ANIM_DURATION_MS = 180   # duração total da animação em ms
-    FRAME_MS         = 11    # intervalo entre frames (~90fps)
+    ANIM_DURATION_MS = 160
+    FRAME_MS         = 10
 
     NAV_ITEMS = [
         {"id": "home",      "label": "Início"},
@@ -43,23 +47,33 @@ class Sidebar(ctk.CTkFrame):
             corner_radius=0,
             **kwargs,
         )
+        self.pack_propagate(False)
+
         self.navigate_callback = navigate_callback
         self.active_page = "home"
 
         self._is_expanded    = False
-        self._anim_id        = None   # ID do after() da animação corrente
+        self._anim_id        = None
         self._anim_start_w   = self.COLLAPSED_WIDTH
         self._anim_target_w  = self.COLLAPSED_WIDTH
         self._anim_elapsed   = 0
         self._collapse_timer = None
-        self._text_visible   = False  # evita configure() redundante
         self._current_width  = self.COLLAPSED_WIDTH
 
-        self._btns: dict[str, ctk.CTkButton] = {}
+        self._btns  = {}
         self._icons = {}
 
         self._load_icons()
-        self.pack_propagate(False)
+
+        self._inner = ctk.CTkFrame(
+            self,
+            width=self.EXPANDED_WIDTH,
+            fg_color=COLORS["sidebar_bg"],
+            corner_radius=0,
+        )
+        self._inner.place(x=0, y=0, relheight=1.0, width=self.EXPANDED_WIDTH)
+        self._inner.pack_propagate(False)
+
         self._build_ui()
         self.after(50, self._setup_mouse_tracking)
 
@@ -73,7 +87,8 @@ class Sidebar(ctk.CTkFrame):
         from components.sidebar_icons import ensure_sidebar_icons
         ensure_sidebar_icons(icons_dir)
 
-        keys = ["logo", "home", "caixa", "produtos", "vendas", "clientes", "relatorio", "config"]
+        keys = ["logo", "home", "caixa", "produtos", "vendas",
+                "clientes", "relatorio", "config"]
         for k in keys:
             def_path = os.path.join(icons_dir, f"{k}_default.png")
             act_path = os.path.join(icons_dir, f"{k}_active.png")
@@ -81,54 +96,42 @@ class Sidebar(ctk.CTkFrame):
             im_act = Image.open(act_path)
             self._icons[k] = {
                 "default": ctk.CTkImage(light_image=im_def, dark_image=im_def, size=(22, 22)),
-                "active": ctk.CTkImage(light_image=im_act, dark_image=im_act, size=(22, 22)),
+                "active":  ctk.CTkImage(light_image=im_act, dark_image=im_act, size=(22, 22)),
             }
 
     def _build_ui(self):
-        # ── 1. Topo: Logo (Ícone estático a x=8, texto a x=68) ────────────────
-        self.logo_icon = ctk.CTkLabel(
-            self,
-            text="",
-            image=self._icons["logo"]["active"],
-            width=54,
-            height=44,
-        )
-        self.logo_icon.place(x=8, y=20)
+        p = self._inner
 
-        self.logo_text = ctk.CTkFrame(self, fg_color="transparent")
-        self.logo_text.place(x=68, y=20)
+        ctk.CTkLabel(
+            p, text="", image=self._icons["logo"]["active"],
+            width=54, height=44,
+        ).place(x=8, y=20)
 
-        self.title_lbl = ctk.CTkLabel(
-            self.logo_text,
-            text="PDV Caixa",
-            font=get_font("sidebar_title"),
-            text_color="#FFFFFF",
-        )
-        self.title_lbl.pack(anchor="w")
+        logo_text = ctk.CTkFrame(p, fg_color="transparent")
+        logo_text.place(x=68, y=20)
+        ctk.CTkLabel(
+            logo_text, text="PDV Caixa",
+            font=get_font("sidebar_title"), text_color="#FFFFFF",
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            logo_text, text="Sistema de Ponto de Venda",
+            font=get_font("small"), text_color=COLORS["sidebar_text"],
+        ).pack(anchor="w", pady=(1, 0))
 
-        self.sub_lbl = ctk.CTkLabel(
-            self.logo_text,
-            text="Sistema de Ponto de Venda",
-            font=get_font("small"),
-            text_color=COLORS["sidebar_text"],
-        )
-        self.sub_lbl.pack(anchor="w", pady=(1, 0))
+        ctk.CTkFrame(
+            p, width=self.EXPANDED_WIDTH - 24, height=1,
+            fg_color="#1D2E47", corner_radius=0,
+        ).place(x=12, y=74)
 
-        # ── 2. Separador ──────────────────────────────────────────────────────
-        self.sep = ctk.CTkFrame(self, width=46, height=1, fg_color="#1D2E47", corner_radius=0)
-        self.sep.place(x=12, y=74)
-
-        # ── 3. Botões de Navegação ─────────────────────────────────────────────
-        # border_spacing=16 garante ícone fixo em x=24px (8px place + 16px spacing)
+        btn_w = self.EXPANDED_WIDTH - 16
         for i, item in enumerate(self.NAV_ITEMS):
-            y_pos = 92 + i * 50
             btn = ctk.CTkButton(
-                self,
-                text="",              # sempre começa sem texto
+                p,
+                text=f"   {item['label']}",
                 image=self._icons[item["id"]]["default"],
                 compound="left",
                 anchor="w",
-                width=self.COLLAPSED_WIDTH - 16,
+                width=btn_w,
                 height=44,
                 corner_radius=10,
                 border_spacing=16,
@@ -136,26 +139,18 @@ class Sidebar(ctk.CTkFrame):
                 hover_color=COLORS["sidebar_active"],
                 text_color=COLORS["sidebar_text"],
                 font=get_font("sidebar_item"),
-                command=lambda p=item["id"]: self._on_click(p),
+                command=lambda pid=item["id"]: self._on_click(pid),
             )
-            btn.place(x=8, y=y_pos)
+            btn.place(x=8, y=92 + i * 50)
             self._btns[item["id"]] = btn
 
-        # ── 4. Rodapé de Versão ───────────────────────────────────────────────
-        self.footer = ctk.CTkLabel(
-            self,
-            text=f"v{APP_VERSION}",
-            font=get_font("small"),
-            text_color="#627594",
-            width=54,
-        )
-        self.footer.place(x=8, rely=1.0, y=-38)
+        ctk.CTkLabel(
+            p, text=f"PDV  v{APP_VERSION}",
+            font=get_font("small"), text_color="#627594",
+            width=btn_w, anchor="w",
+        ).place(x=8, rely=1.0, y=-38)
 
         self._apply_active(self.active_page)
-
-    # ------------------------------------------------------------------ #
-    #  Rastreamento do mouse                                              #
-    # ------------------------------------------------------------------ #
 
     def _setup_mouse_tracking(self):
         top = self.winfo_toplevel()
@@ -168,102 +163,59 @@ class Sidebar(ctk.CTkFrame):
             sy = self.winfo_rooty()
             sw = self.winfo_width()
             sh = self.winfo_height()
-            is_over = (sx <= event.x_root <= sx + sw and sy <= event.y_root <= sy + sh)
+            over = (sx <= event.x_root <= sx + sw
+                    and sy <= event.y_root <= sy + sh)
         except Exception:
-            is_over = False
+            over = False
 
-        if is_over:
+        if over:
             if self._collapse_timer:
                 self.after_cancel(self._collapse_timer)
                 self._collapse_timer = None
             if not self._is_expanded:
                 self._is_expanded = True
-                self._start_animation(self.EXPANDED_WIDTH)
+                self._start_anim(self.EXPANDED_WIDTH)
         else:
             if self._is_expanded and not self._collapse_timer:
-                self._collapse_timer = self.after(120, self._trigger_collapse)
+                self._collapse_timer = self.after(120, self._do_collapse)
 
     def _on_window_leave(self, event):
         if self._is_expanded and not self._collapse_timer:
-            self._collapse_timer = self.after(80, self._trigger_collapse)
+            self._collapse_timer = self.after(80, self._do_collapse)
 
-    def _trigger_collapse(self):
+    def _do_collapse(self):
         self._collapse_timer = None
         self._is_expanded = False
-        self._start_animation(self.COLLAPSED_WIDTH)
+        self._start_anim(self.COLLAPSED_WIDTH)
 
-    # ------------------------------------------------------------------ #
-    #  Motor de animação com ease-out cubic                               #
-    # ------------------------------------------------------------------ #
+    def _ease_out_cubic(self, t):
+        return 1.0 - (1.0 - t) ** 3
 
-    def _ease_out_cubic(self, t: float) -> float:
-        """Easing ease-out: começa rápido e desacelera suavemente ao final."""
-        return 1 - (1 - t) ** 3
-
-    def _start_animation(self, target: int):
-        """Inicia ou redireciona a animação para o alvo, partindo da largura atual."""
+    def _start_anim(self, target):
         if self._anim_id is not None:
             self.after_cancel(self._anim_id)
             self._anim_id = None
-
         self._anim_start_w  = self._current_width
         self._anim_target_w = target
         self._anim_elapsed  = 0
-        self._anim_id = self.after(self.FRAME_MS, self._anim_tick)
+        self._anim_id = self.after(self.FRAME_MS, self._tick)
 
-    def _anim_tick(self):
+    def _tick(self):
         self._anim_id = None
         self._anim_elapsed += self.FRAME_MS
+        t    = min(1.0, self._anim_elapsed / self.ANIM_DURATION_MS)
+        ease = self._ease_out_cubic(t)
+        w    = round(self._anim_start_w +
+                     (self._anim_target_w - self._anim_start_w) * ease)
 
-        t      = min(1.0, self._anim_elapsed / self.ANIM_DURATION_MS)
-        eased  = self._ease_out_cubic(t)
-        w      = int(self._anim_start_w + (self._anim_target_w - self._anim_start_w) * eased)
-
-        self._apply_width(w)
-
-        if t < 1.0:
-            self._anim_id = self.after(self.FRAME_MS, self._anim_tick)
-        else:
-            # Garante valor exato no final
-            self._apply_width(self._anim_target_w)
-            # Se terminou recolhido, garante estado limpo
-            if self._anim_target_w == self.COLLAPSED_WIDTH:
-                self._set_text_visible(False)
-                for btn in self._btns.values():
-                    btn.configure(width=self.COLLAPSED_WIDTH - 16)
-                self.footer.configure(text=f"v{APP_VERSION}", width=54)
-
-    def _apply_width(self, w: int):
-        """Aplica a largura w a todos os elementos do sidebar atomicamente."""
         self._current_width = w
         self.configure(width=w)
 
-        btn_w = w - 16
-        for btn in self._btns.values():
-            btn.configure(width=btn_w)
-
-        self.sep.configure(width=max(46, w - 24))
-
-        # Mostra/esconde texto conforme o limiar — sem causar reflow de ícones
-        should_show = (w >= self.TEXT_THRESHOLD)
-        if should_show != self._text_visible:
-            self._set_text_visible(should_show)
-
-    def _set_text_visible(self, visible: bool):
-        """Mostra ou esconde os rótulos dos botões e do rodapé."""
-        self._text_visible = visible
-        if visible:
-            for item in self.NAV_ITEMS:
-                self._btns[item["id"]].configure(text=f"   {item['label']}")
-            self.footer.configure(text=f"PDV  v{APP_VERSION}")
+        if t < 1.0:
+            self._anim_id = self.after(self.FRAME_MS, self._tick)
         else:
-            for item in self.NAV_ITEMS:
-                self._btns[item["id"]].configure(text="")
-            self.footer.configure(text=f"v{APP_VERSION}")
-
-    # ------------------------------------------------------------------ #
-    #  Navegação e Itens Ativos                                           #
-    # ------------------------------------------------------------------ #
+            self._current_width = self._anim_target_w
+            self.configure(width=self._anim_target_w)
 
     def _on_click(self, page_id):
         self.set_active(page_id)
@@ -275,13 +227,9 @@ class Sidebar(ctk.CTkFrame):
 
     def _apply_active(self, page_id):
         for pid, btn in self._btns.items():
-            active    = (pid == page_id)
-            c         = COLORS["primary"] if active else "transparent"
-            t         = "#FFFFFF"         if active else COLORS["sidebar_text"]
-            icon_type = "active"          if active else "default"
-
+            active = (pid == page_id)
             btn.configure(
-                fg_color=c,
-                text_color=t,
-                image=self._icons[pid][icon_type],
+                fg_color   = COLORS["primary"] if active else "transparent",
+                text_color = "#FFFFFF" if active else COLORS["sidebar_text"],
+                image      = self._icons[pid]["active" if active else "default"],
             )
