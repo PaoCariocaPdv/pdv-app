@@ -88,7 +88,9 @@ class PDVApp(ctk.CTk):
         self.sidebar_spacer = ctk.CTkFrame(
             self,
             width=70,
-            fg_color=COLORS["sidebar_bg"],
+            fg_color=COLORS.get("sidebar_bg", "#FFFFFF"),
+            border_color=COLORS.get("sidebar_border", "#E2E8F0"),
+            border_width=1,
             corner_radius=0,
         )
         self.sidebar_spacer.grid(row=0, column=0, sticky="nsew")

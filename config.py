@@ -5,7 +5,7 @@ Configurações globais do aplicativo — Sistema de Cores e Tipografia Padroniz
 
 # Informações do App
 APP_NAME = "PDV - Caixa"
-APP_VERSION = "1.0.14"
+APP_VERSION = "1.0.15"
 
 # GitHub — usado pelo auto-updater
 GITHUB_USER = "PaoCariocaPdv"
@@ -25,9 +25,12 @@ COLORS = {
     "primary": "#1D4ED8",               # Primária (botões, preços, seleção)
     "primary_hover": "#1E40AF",         # Primária no hover/pressionado
     "selected_bg": "#EAF0FF",           # Fundo de item selecionado
-    "sidebar_bg": "#0B1B33",            # Menu lateral e card de total
-    "sidebar_text": "#B8C4DA",          # Texto sobre o menu escuro
-    "sidebar_active": "#162B4E",        # Item ativo no menu escuro
+    "sidebar_bg": "#FFFFFF",            # Menu lateral estilo Caixa Bolo (fundo branco)
+    "sidebar_border": "#E2E8F0",        # Borda sutil do menu lateral
+    "sidebar_text": "#64748B",          # Texto/ícones do menu lateral
+    "sidebar_hover": "#EFF6FF",         # Hover suave em azul claro
+    "sidebar_active": "#1D4ED8",        # Item ativo em azul primário
+    "total_bg": "#0B1B33",              # Fundo escuro do card de total
     "highlight": "#D97706",             # Destaque (detalhes e promoções)
 
     # ── Base ──────────────────────────────────────────────────────────────

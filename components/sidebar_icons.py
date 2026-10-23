@@ -8,23 +8,19 @@ import math
 from PIL import Image, ImageDraw
 
 
-def ensure_sidebar_icons(icons_dir: str):
+def ensure_sidebar_icons(icons_dir: str, force: bool = False):
     """Garante que todos os ícones PNG existam em alta definição."""
     os.makedirs(icons_dir, exist_ok=True)
     required = ["logo", "home", "caixa", "produtos", "vendas", "clientes", "relatorio", "config"]
-    missing = False
-    for k in required:
-        if not os.path.exists(os.path.join(icons_dir, f"{k}_default.png")) or \
-           not os.path.exists(os.path.join(icons_dir, f"{k}_active.png")):
-            missing = True
-            break
 
-    if not missing:
+    marker = os.path.join(icons_dir, ".v2_light_theme")
+    if not force and os.path.exists(marker):
         return
 
     palette = {
-        "default": (184, 196, 218, 255),  # #B8C4DA
-        "active": (255, 255, 255, 255),   # #FFFFFF
+        "default": (100, 116, 139, 255),  # #64748B Slate Gray
+        "hover":   (29, 78, 216, 255),    # #1D4ED8 Primary Blue
+        "active":  (255, 255, 255, 255),  # #FFFFFF Pure White
     }
 
     for cname, color in palette.items():

@@ -45,7 +45,7 @@ class TotalCard(ctk.CTkFrame):
     """Card de total: fundo #0B1B33, texto branco, raio 12px."""
 
     def __init__(self, parent, **kwargs):
-        kwargs.setdefault("fg_color", COLORS["sidebar_bg"])
+        kwargs.setdefault("fg_color", COLORS.get("total_bg", "#0B1B33"))
         kwargs.setdefault("corner_radius", MEASUREMENTS["card_radius"])
         super().__init__(parent, **kwargs)
 
