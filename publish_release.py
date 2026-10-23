@@ -116,7 +116,24 @@ def main():
         data=file_bytes,
         headers=upload_headers
     )
-    print(f"Upload concluído com sucesso! (Status {status})")
+    print(f"Upload do PDV.exe concluído com sucesso! (Status {status})")
+
+    # 4. Faz upload do Instalador se existir
+    installer_path = f"installer/PDV_Setup_v{version}.exe"
+    if os.path.exists(installer_path):
+        inst_size_mb = os.path.getsize(installer_path) / (1024 * 1024)
+        print(f"Fazendo upload do {installer_path} ({inst_size_mb:.1f} MB)...")
+        with open(installer_path, "rb") as f:
+            inst_bytes = f.read()
+        inst_url = f"{upload_url_base}?name=PDV_Setup_v{version}.exe"
+        data, status = make_request(
+            inst_url,
+            method="POST",
+            data=inst_bytes,
+            headers=upload_headers
+        )
+        print(f"Upload do Instalador concluído com sucesso! (Status {status})")
+
     print(f"Release v{version} publicada com sucesso em: https://github.com/{REPO}/releases/tag/{tag}")
 
 
