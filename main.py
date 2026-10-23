@@ -79,12 +79,17 @@ class PDVApp(ctk.CTk):
         self.geometry(f"{APP_WIDTH}x{APP_HEIGHT}+{x}+{y}")
 
     def _build_layout(self):
-        """Monta o layout principal idêntico ao Caixa Bolo: container (64px) + conteúdo + overlay drawer."""
+        """
+        Layout idêntico ao Caixa Bolo:
+        - 64px reservado na esquerda (sidebar-container estático)
+        - Conteúdo preenche o restante
+        - Sidebar é um overlay flutuante que expande/recolhe via place_configure(width=)
+        """
         self.grid_columnconfigure(0, weight=0, minsize=64)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # Espaçador estático (64px) equivalente a .sidebar-container do Caixa Bolo
+        # Espaçador estático (64px) — reserva o espaço lateral igual ao Caixa Bolo
         self.sidebar_container = ctk.CTkFrame(
             self,
             width=64,
@@ -94,7 +99,7 @@ class PDVApp(ctk.CTk):
         self.sidebar_container.grid(row=0, column=0, sticky="nsew")
         self.sidebar_container.grid_propagate(False)
 
-        # Área de conteúdo principal
+        # Área de conteúdo principal (ocupa tudo à direita dos 64px)
         self.content_area = ctk.CTkFrame(
             self,
             fg_color=COLORS["bg_screen"],
@@ -104,7 +109,8 @@ class PDVApp(ctk.CTk):
         self.content_area.grid_columnconfigure(0, weight=1)
         self.content_area.grid_rowconfigure(0, weight=1)
 
-        # Sidebar em Drawer Overlay (.sidebar com transição suave sobre o conteúdo)
+        # Sidebar Overlay: começa com 64px e expande até 260px via place_configure(width=)
+        # Isso é exatamente o que o CSS faz com `transition: width 0.3s cubic-bezier(...)`
         self.sidebar = Sidebar(self, navigate_callback=self.navigate)
         self.sidebar.place(x=0, y=0, relheight=1.0)
         self.sidebar.lift()
