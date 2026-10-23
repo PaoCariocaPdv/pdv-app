@@ -9,6 +9,7 @@ import customtkinter as ctk
 from config import APP_NAME, APP_WIDTH, APP_HEIGHT, APP_MIN_WIDTH, APP_MIN_HEIGHT, COLORS
 from fonts import init_fonts
 from database import initialize_firebase
+from components.sidebar import Sidebar
 from components.update_dialog import UpdateDialog
 from pages.home import HomePage
 from pages.caixa import CaixaPage
@@ -78,16 +79,35 @@ class PDVApp(ctk.CTk):
         self.geometry(f"{APP_WIDTH}x{APP_HEIGHT}+{x}+{y}")
 
     def _build_layout(self):
-        """Monta o layout principal: tela cheia limpa, sem menus."""
-        # Área de conteúdo ocupando 100% da janela
+        """Monta o layout principal idêntico ao Caixa Bolo: container (64px) + conteúdo + overlay drawer."""
+        self.grid_columnconfigure(0, weight=0, minsize=64)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # Espaçador estático (64px) equivalente a .sidebar-container do Caixa Bolo
+        self.sidebar_container = ctk.CTkFrame(
+            self,
+            width=64,
+            fg_color="#FFFFFF",
+            corner_radius=0,
+        )
+        self.sidebar_container.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_container.grid_propagate(False)
+
+        # Área de conteúdo principal
         self.content_area = ctk.CTkFrame(
             self,
             fg_color=COLORS["bg_screen"],
             corner_radius=0,
         )
-        self.content_area.pack(fill="both", expand=True)
+        self.content_area.grid(row=0, column=1, sticky="nsew")
         self.content_area.grid_columnconfigure(0, weight=1)
         self.content_area.grid_rowconfigure(0, weight=1)
+
+        # Sidebar em Drawer Overlay (.sidebar com transição suave sobre o conteúdo)
+        self.sidebar = Sidebar(self, navigate_callback=self.navigate)
+        self.sidebar.place(x=0, y=0, relheight=1.0)
+        self.sidebar.lift()
 
         # Mapa de páginas
         self._pages: dict[str, ctk.CTkFrame] = {}
@@ -129,6 +149,10 @@ class PDVApp(ctk.CTk):
         page = self._get_page(page_id)
         page.grid(row=0, column=0, sticky="nsew")
         self._current_page = page
+
+        # Atualiza estado ativo na sidebar e garante sobreposição
+        self.sidebar.set_active(page_id)
+        self.sidebar.lift()
 
     def _check_for_updates(self):
         """Verifica atualizações em background sem travar a UI."""
