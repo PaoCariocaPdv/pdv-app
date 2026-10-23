@@ -9,7 +9,6 @@ import customtkinter as ctk
 from config import APP_NAME, APP_WIDTH, APP_HEIGHT, APP_MIN_WIDTH, APP_MIN_HEIGHT, COLORS
 from fonts import init_fonts
 from database import initialize_firebase
-from components.navbar import TopNavbar
 from components.update_dialog import UpdateDialog
 from pages.home import HomePage
 from pages.caixa import CaixaPage
@@ -79,18 +78,14 @@ class PDVApp(ctk.CTk):
         self.geometry(f"{APP_WIDTH}x{APP_HEIGHT}+{x}+{y}")
 
     def _build_layout(self):
-        """Monta o layout principal: Navbar horizontal no topo + área de conteúdo em tela cheia."""
-        # Barra de navegação superior (Header)
-        self.navbar = TopNavbar(self, navigate_callback=self.navigate)
-        self.navbar.pack(side="top", fill="x")
-
-        # Área de conteúdo (ocupa 100% da largura e altura restante)
+        """Monta o layout principal: tela cheia limpa, sem menus."""
+        # Área de conteúdo ocupando 100% da janela
         self.content_area = ctk.CTkFrame(
             self,
             fg_color=COLORS["bg_screen"],
             corner_radius=0,
         )
-        self.content_area.pack(side="top", fill="both", expand=True)
+        self.content_area.pack(fill="both", expand=True)
         self.content_area.grid_columnconfigure(0, weight=1)
         self.content_area.grid_rowconfigure(0, weight=1)
 
@@ -134,9 +129,6 @@ class PDVApp(ctk.CTk):
         page = self._get_page(page_id)
         page.grid(row=0, column=0, sticky="nsew")
         self._current_page = page
-
-        # Atualiza estado ativo na navbar superior
-        self.navbar.set_active(page_id)
 
     def _check_for_updates(self):
         """Verifica atualizações em background sem travar a UI."""
