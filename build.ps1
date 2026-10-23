@@ -7,7 +7,7 @@ param(
     [string]$Version
 )
 
-$PYTHON    = "python"
+$PYTHON    = "C:\Users\escri\AppData\Local\Programs\Python\Python311\python.exe"
 $ISCC      = "C:\Users\escri\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
 $REPO      = "PaoCariocaPdv/pdv-app"
 $EXE_PATH  = "dist\PDV.exe"
