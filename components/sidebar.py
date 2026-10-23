@@ -1,4 +1,4 @@
-﻿"""
+"""
 PDV - Ponto de Venda
 Componente: Barra lateral de navegação retrátil (Overlay Drawer)
 
@@ -71,7 +71,7 @@ class Sidebar(ctk.CTkFrame):
             fg_color=COLORS["sidebar_bg"],
             corner_radius=0,
         )
-        self._inner.place(x=0, y=0, relheight=1.0, width=self.EXPANDED_WIDTH)
+        self._inner.place(x=0, y=0, relheight=1.0)
         self._inner.pack_propagate(False)
 
         self._build_ui()
